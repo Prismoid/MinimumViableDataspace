@@ -183,6 +183,12 @@ async def authz_debug_delete_all(request: Request):
 # =====================================================
 # Connector Original API
 # =====================================================
+@app.api_route("/invoke_resource",
+               methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],)
+async def fc_proxy(request: Request):
+    requ
+    
+    return await relay(request, "http://localhost:7552", f"/hello_world.txt")
 @app.post("/get_data")
 def get_data(req: GetDataReq):
     endpoint, local_path = get_location_from_fc(req.data_id)

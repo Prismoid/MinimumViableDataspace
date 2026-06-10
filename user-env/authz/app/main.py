@@ -20,7 +20,7 @@ Base = declarative_base()
 class AuthzTable(Base):
     __tablename__ = "authz_entries"
 
-    data_id = Column(String, primary_key=True)
+    resource_id = Column(String, primary_key=True)
     access_grantee_id = Column(String, primary_key=True)
     expired_at = Column(DateTime, nullable=False)
     created_at = Column(DateTime, nullable=False)
@@ -40,21 +40,21 @@ def on_startup():
 # Request models
 # =====================================================
 class AddAuthzReq(BaseModel):
-    data_id: str
+    resource_id: str
     access_grantee_id: str
     expired_at: str        # authz validity
     expire_time: str       # signature validity
     signature: str
 
 class UpdAuthzReq(BaseModel):
-    data_id: str
+    resource_id: str
     access_grantee_id: str
     expired_at: str        # new expired_at
     expire_time: str
     signature: str
 
 class DelAuthzReq(BaseModel):
-    data_id: str
+    resource_id: str
     access_grantee_id: str
     expire_time: str
     signature: str
@@ -77,13 +77,13 @@ def get_public_key(user_id: str) -> str:
         raise HTTPException(400, "public key not found")
     return r.json()["public_key"]
 
-def get_owner_user_id_from_fc(data_id: str) -> str:
-    r = requests.get(f"{FC_BASE_URL}/fc/get", params={"data_id": data_id})
+def get_owner_user_id_from_fc(resource_id: str) -> str:
+    r = requests.get(f"{FC_BASE_URL}/fc/get", params={"resource_id": resource_id})
     if r.status_code != 200:
         raise HTTPException(400, "fc access failed")
     entries = r.json()
     if not entries:
-        raise HTTPException(404, "data_id not found")
+        raise HTTPException(404, "resource_id not found")
     return entries[0]["user_id"]
 
 def verify_signature(public_key_pem: str, data: dict, signature_b64: str) -> bool:
@@ -103,12 +103,12 @@ def add_authz(req: AddAuthzReq):
     # 1. 署名の有効期限チェック
     validate_expire(req.expire_time)
 
-    # 2. data_id → owner user_id（FC）
-    owner_user_id = get_owner_user_id_from_fc(req.data_id)
+    # 2. resource_id → owner user_id（FC）
+    owner_user_id = get_owner_user_id_from_fc(req.resource_id)
 
     # 3. 署名対象データ
     data = {
-        "data_id": req.data_id,
+        "resource_id": req.resource_id,
         "access_grantee_id": req.access_grantee_id,
         "expired_at": req.expired_at,
         "expire_time": req.expire_time,
@@ -124,7 +124,7 @@ def add_authz(req: AddAuthzReq):
     # 6. DB 登録
     db = SessionLocal()
     if db.query(AuthzTable).filter_by(
-        data_id=req.data_id,
+        resource_id=req.resource_id,
         access_grantee_id=req.access_grantee_id,
     ).first():
         db.close()
@@ -132,7 +132,7 @@ def add_authz(req: AddAuthzReq):
 
     db.add(
         AuthzTable(
-            data_id=req.data_id,
+            resource_id=req.resource_id,
             access_grantee_id=req.access_grantee_id,
             expired_at=datetime.fromisoformat(req.expired_at.replace("Z", "+00:00")),
             created_at=datetime.now(timezone.utc),
@@ -147,10 +147,10 @@ def add_authz(req: AddAuthzReq):
 def upd_authz(req: UpdAuthzReq):
     validate_expire(req.expire_time)
 
-    owner_user_id = get_owner_user_id_from_fc(req.data_id)
+    owner_user_id = get_owner_user_id_from_fc(req.resource_id)
 
     data = {
-        "data_id": req.data_id,
+        "resource_id": req.resource_id,
         "access_grantee_id": req.access_grantee_id,
         "expired_at": req.expired_at,
         "expire_time": req.expire_time,
@@ -162,7 +162,7 @@ def upd_authz(req: UpdAuthzReq):
 
     db = SessionLocal()
     authz = db.query(AuthzTable).filter_by(
-        data_id=req.data_id,
+        resource_id=req.resource_id,
         access_grantee_id=req.access_grantee_id,
     ).first()
 
@@ -180,10 +180,10 @@ def upd_authz(req: UpdAuthzReq):
 def del_authz(req: DelAuthzReq):
     validate_expire(req.expire_time)
 
-    owner_user_id = get_owner_user_id_from_fc(req.data_id)
+    owner_user_id = get_owner_user_id_from_fc(req.resource_id)
 
     data = {
-        "data_id": req.data_id,
+        "resource_id": req.resource_id,
         "access_grantee_id": req.access_grantee_id,
         "expire_time": req.expire_time,
     }
@@ -194,7 +194,7 @@ def del_authz(req: DelAuthzReq):
 
     db = SessionLocal()
     authz = db.query(AuthzTable).filter_by(
-        data_id=req.data_id,
+        resource_id=req.resource_id,
         access_grantee_id=req.access_grantee_id,
     ).first()
 
@@ -209,10 +209,10 @@ def del_authz(req: DelAuthzReq):
     return {"status": "ok"}
 
 @app.get("/authz/get")
-def get_authz(data_id: str, access_grantee_id: str):
+def get_authz(resource_id: str, access_grantee_id: str):
     db = SessionLocal()
     authz = db.query(AuthzTable).filter_by(
-        data_id=data_id,
+        resource_id=resource_id,
         access_grantee_id=access_grantee_id,
     ).first()
     db.close()
@@ -221,7 +221,7 @@ def get_authz(data_id: str, access_grantee_id: str):
         raise HTTPException(404, "not found")
 
     return {
-        "data_id": authz.data_id,
+        "resource_id": authz.resource_id,
         "access_grantee_id": authz.access_grantee_id,
         "expired_at": authz.expired_at.isoformat(),
         "created_at": authz.created_at.isoformat(),
@@ -239,7 +239,7 @@ def debug_show_all():
 
     return [
         {
-            "data_id": e.data_id,
+            "resource_id": e.resource_id,
             "access_grantee_id": e.access_grantee_id,
             "expired_at": e.expired_at.isoformat(),
             "created_at": e.created_at.isoformat(),

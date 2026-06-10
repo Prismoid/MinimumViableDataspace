@@ -13,7 +13,7 @@ CAT_URL = "http://localhost:7451"
 
 USER_A = "userA"
 USER_B = "userB"
-DATA_ID = "data-001"
+RESOURCE_ID = "resource-001"
 
 # =====================================================
 # key (PoC)
@@ -92,11 +92,11 @@ show(requests.delete(f"{CAT_URL}/fc/debug/delAll"))
 
 print("\n=== CAT: add catalog entry (owner = userA) ===")
 cat_add = {
-    "data_id": DATA_ID,
+    "resource_id": RESOURCE_ID,
     "user_id": USER_A,
     "description": "sample climate dataset for PoC",
     "endpoint": "https://example.com/connector",
-    "resource_path": "/data/climate",
+    "resource_path": "/resource/climate",
     "expire_time": iso_now_plus(),
 }
 show(
@@ -108,11 +108,11 @@ show(
 
 print("\n=== CAT: update catalog (transfer owner userA → userB, dual signatures) ===")
 cat_upd = {
-    "data_id": DATA_ID,
+    "resource_id": RESOURCE_ID,
     "user_id": USER_B,  # new owner
     "description": "updated description (owner transferred)",
     "endpoint": "https://example.com/connector",
-    "resource_path": "/data/climate/v2",
+    "resource_path": "/resource/climate/v2",
     "expire_time": iso_now_plus(),
 }
 
@@ -133,8 +133,8 @@ show(
 print("\n=== CAT: get catalog after update (all) ===")
 show(requests.get(f"{CAT_URL}/fc/get"))
 
-print("\n=== CAT: get catalog by data_id ===")
-show(requests.get(f"{CAT_URL}/fc/get", params={"data_id": DATA_ID}))
+print("\n=== CAT: get catalog by resource_id ===")
+show(requests.get(f"{CAT_URL}/fc/get", params={"resource_id": RESOURCE_ID}))
 
 print("\n=== CAT: get catalog by user_id ===")
 show(requests.get(f"{CAT_URL}/fc/get", params={"user_id": USER_B}))
@@ -142,17 +142,17 @@ show(requests.get(f"{CAT_URL}/fc/get", params={"user_id": USER_B}))
 print("\n=== CAT: get catalog by keyword ===")
 show(requests.get(f"{CAT_URL}/fc/get", params={"keyword": "climate"}))
 
-print("\n=== CAT: get catalog by data_id + user_id ===")
+print("\n=== CAT: get catalog by resource_id + user_id ===")
 show(
     requests.get(
         f"{CAT_URL}/fc/get",
-        params={"data_id": DATA_ID, "user_id": USER_B},
+        params={"resource_id": RESOURCE_ID, "user_id": USER_B},
     )
 )
 
 print("\n=== CAT: delete catalog entry (owner = userB) ===")
 cat_del = {
-    "data_id": DATA_ID,
+    "resource_id": RESOURCE_ID,
     "expire_time": iso_now_plus(),
 }
 show(

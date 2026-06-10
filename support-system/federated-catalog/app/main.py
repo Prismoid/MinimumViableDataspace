@@ -19,7 +19,7 @@ Base = declarative_base()
 class CatalogEntry(Base):
     __tablename__ = "catalog_entries"
 
-    data_id = Column(String, primary_key=True)
+    resource_id = Column(String, primary_key=True)
     user_id = Column(String, nullable=False)
     description = Column(String, nullable=False)
     endpoint = Column(String, nullable=False)
@@ -40,7 +40,7 @@ def on_startup():
 # Request models
 # =====================================================
 class AddCatReq(BaseModel):
-    data_id: str
+    resource_id: str
     user_id: str
     description: str
     endpoint: str
@@ -49,7 +49,7 @@ class AddCatReq(BaseModel):
     signature: str
 
 class UpdCatReq(BaseModel):
-    data_id: str
+    resource_id: str
     user_id: str              # new owner
     description: str
     endpoint: str
@@ -59,7 +59,7 @@ class UpdCatReq(BaseModel):
     signature_new: str
 
 class DelCatReq(BaseModel):
-    data_id: str
+    resource_id: str
     expire_time: str
     signature: str
 
@@ -96,7 +96,7 @@ def add_cat(req: AddCatReq):
     validate_expire(req.expire_time)
 
     data = {
-        "data_id": req.data_id,
+        "resource_id": req.resource_id,
         "user_id": req.user_id,
         "description": req.description,
         "endpoint": req.endpoint,
@@ -109,13 +109,13 @@ def add_cat(req: AddCatReq):
         raise HTTPException(400, "invalid signature")
 
     db = SessionLocal()
-    if db.query(CatalogEntry).filter_by(data_id=req.data_id).first():
+    if db.query(CatalogEntry).filter_by(resource_id=req.resource_id).first():
         db.close()
         raise HTTPException(409, "already exists")
 
     db.add(
         CatalogEntry(
-            data_id=req.data_id,
+            resource_id=req.resource_id,
             user_id=req.user_id,
             description=req.description,
             endpoint=req.endpoint,
@@ -126,14 +126,14 @@ def add_cat(req: AddCatReq):
     db.commit()
     db.close()
 
-    return {"status": "ok", "data_id": req.data_id}
+    return {"status": "ok", "resource_id": req.resource_id}
 
 @app.post("/fc/upd")
 def upd_cat(req: UpdCatReq):
     validate_expire(req.expire_time)
 
     db = SessionLocal()
-    entry = db.query(CatalogEntry).filter_by(data_id=req.data_id).first()
+    entry = db.query(CatalogEntry).filter_by(resource_id=req.resource_id).first()
     if not entry:
         db.close()
         raise HTTPException(404, "not found")
@@ -143,7 +143,7 @@ def upd_cat(req: UpdCatReq):
 
     # 署名対象データ（両者で完全一致させる）
     data = {
-        "data_id": req.data_id,
+        "resource_id": req.resource_id,
         "user_id": req.user_id,          # new owner
         "description": req.description,
         "endpoint": req.endpoint,
@@ -181,7 +181,7 @@ def upd_cat(req: UpdCatReq):
 
     return {
         "status": "updated",
-        "data_id": req.data_id,
+        "resource_id": req.resource_id,
         "old_user_id": current_owner,
         "new_user_id": new_owner,
     }
@@ -192,7 +192,7 @@ def del_cat(req: DelCatReq):
     validate_expire(req.expire_time)
 
     db = SessionLocal()
-    entry = db.query(CatalogEntry).filter_by(data_id=req.data_id).first()
+    entry = db.query(CatalogEntry).filter_by(resource_id=req.resource_id).first()
     if not entry:
         db.close()
         raise HTTPException(404, "not found")
@@ -200,7 +200,7 @@ def del_cat(req: DelCatReq):
     current_owner = entry.user_id
 
     data = {
-        "data_id": req.data_id,
+        "resource_id": req.resource_id,
         "expire_time": req.expire_time,
     }
 
@@ -213,17 +213,17 @@ def del_cat(req: DelCatReq):
     db.commit()
     db.close()
 
-    return {"status": "deleted", "data_id": req.data_id}
+    return {"status": "deleted", "resource_id": req.resource_id}
 
 @app.get("/fc/get")
-def get_cat(keyword: str = Query(None), data_id: str = Query(None), user_id: str = Query(None)): 
+def get_cat(keyword: str = Query(None), resource_id: str = Query(None), user_id: str = Query(None)): 
     db = SessionLocal()
     q = db.query(CatalogEntry)
 
     if keyword:
         q = q.filter(CatalogEntry.description.contains(keyword))
-    if data_id:
-        q = q.filter(CatalogEntry.data_id == data_id)
+    if resource_id:
+        q = q.filter(CatalogEntry.resource_id == resource_id)
     if user_id:
         q = q.filter(CatalogEntry.user_id == user_id)
 
@@ -231,7 +231,7 @@ def get_cat(keyword: str = Query(None), data_id: str = Query(None), user_id: str
     db.close()
     return [
         {
-            "data_id": e.data_id,
+            "resource_id": e.resource_id,
             "user_id": e.user_id,
             "description": e.description,
             "endpoint": e.endpoint,
@@ -252,7 +252,7 @@ def debug_show_all():
 
     return [
         {
-            "data_id": e.data_id,
+            "resource_id": e.resource_id,
             "user_id": e.user_id,
             "description": e.description,
             "endpoint": e.endpoint,
