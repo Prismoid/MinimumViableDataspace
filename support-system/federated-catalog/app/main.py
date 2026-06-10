@@ -23,7 +23,7 @@ class CatalogEntry(Base):
     user_id = Column(String, nullable=False)
     description = Column(String, nullable=False)
     endpoint = Column(String, nullable=False)
-    local_path = Column(String, nullable=False)
+    resource_path = Column(String, nullable=False)
     registered_at = Column(DateTime, nullable=False)
 
 # =====================================================
@@ -44,7 +44,7 @@ class AddCatReq(BaseModel):
     user_id: str
     description: str
     endpoint: str
-    local_path: str
+    resource_path: str
     expire_time: str
     signature: str
 
@@ -53,7 +53,7 @@ class UpdCatReq(BaseModel):
     user_id: str              # new owner
     description: str
     endpoint: str
-    local_path: str
+    resource_path: str
     expire_time: str
     signature_old: str
     signature_new: str
@@ -100,7 +100,7 @@ def add_cat(req: AddCatReq):
         "user_id": req.user_id,
         "description": req.description,
         "endpoint": req.endpoint,
-        "local_path": req.local_path,
+        "resource_path": req.resource_path,
         "expire_time": req.expire_time,
     }
 
@@ -119,7 +119,7 @@ def add_cat(req: AddCatReq):
             user_id=req.user_id,
             description=req.description,
             endpoint=req.endpoint,
-            local_path=req.local_path,
+            resource_path=req.resource_path,
             registered_at=datetime.now(timezone.utc),
         )
     )
@@ -147,7 +147,7 @@ def upd_cat(req: UpdCatReq):
         "user_id": req.user_id,          # new owner
         "description": req.description,
         "endpoint": req.endpoint,
-        "local_path": req.local_path,
+        "resource_path": req.resource_path,
         "expire_time": req.expire_time,
     }
 
@@ -173,7 +173,7 @@ def upd_cat(req: UpdCatReq):
     entry.user_id = new_owner
     entry.description = req.description
     entry.endpoint = req.endpoint
-    entry.local_path = req.local_path
+    entry.resource_path = req.resource_path
     entry.registered_at = datetime.now(timezone.utc)
 
     db.commit()
@@ -235,7 +235,7 @@ def get_cat(keyword: str = Query(None), data_id: str = Query(None), user_id: str
             "user_id": e.user_id,
             "description": e.description,
             "endpoint": e.endpoint,
-            "local_path": e.local_path,
+            "resource_path": e.resource_path,
             "registered_at": e.registered_at.isoformat(),
         }
         for e in entries
@@ -256,7 +256,7 @@ def debug_show_all():
             "user_id": e.user_id,
             "description": e.description,
             "endpoint": e.endpoint,
-            "local_path": e.local_path,
+            "resource_path": e.resource_path,
             "registered_at": e.registered_at.isoformat(),
         }
         for e in entries

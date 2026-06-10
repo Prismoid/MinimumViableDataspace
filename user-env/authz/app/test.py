@@ -69,7 +69,7 @@ payload = {
     "user_id": USER_A,
     "description": "minimal PoC data",
     "endpoint": "https://example.com",
-    "local_path": "/data/sample",
+    "resource_path": "/data/sample",
     "expire_time": iso_now_plus(),
 }
 payload["signature"] = sign(sk_a, payload)

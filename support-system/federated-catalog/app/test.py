@@ -96,7 +96,7 @@ cat_add = {
     "user_id": USER_A,
     "description": "sample climate dataset for PoC",
     "endpoint": "https://example.com/connector",
-    "local_path": "/data/climate",
+    "resource_path": "/data/climate",
     "expire_time": iso_now_plus(),
 }
 show(
@@ -112,7 +112,7 @@ cat_upd = {
     "user_id": USER_B,  # new owner
     "description": "updated description (owner transferred)",
     "endpoint": "https://example.com/connector",
-    "local_path": "/data/climate/v2",
+    "resource_path": "/data/climate/v2",
     "expire_time": iso_now_plus(),
 }
 
