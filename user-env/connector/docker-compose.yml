@@ -1,0 +1,9 @@
+services:
+  api:
+    build: .
+    ports:
+      - "7550:7550"
+    volumes:
+      - ./app/rcv_storage:/rcv_storage
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
