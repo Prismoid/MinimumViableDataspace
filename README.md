@@ -29,6 +29,6 @@ cd user-env/file-server && docker compose up -d
 - データ共有の一連の手続きは、コネクタの app ディレクトリにある test2.py スクリプトを実行することで確かめられる。
 ```bash
 cd user-env/connector/app
-python3 test1.py # HTPP File Serverで提供されているデータを取得する
+python3 test.py # HTPP File Serverで提供されているデータを取得する
 python3 test2.py # DUCRBのAPIを呼ぶ
 ```
