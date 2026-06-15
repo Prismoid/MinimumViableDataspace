@@ -15,7 +15,8 @@ CONNECTOR_URL = "http://localhost:7550"
 USER_A = "userA"
 USER_B = "userB"
 RESOURCE_ID = "resource-001"
-RESOURCE_PATH = "http://host.docker.internal:7552/hello_world.txt"
+# RESOURCE_PATH = "http://172.26.16.25:8000/api/v1/lighting/a302-1/on"
+RESOURCE_PATH = "http://172.26.16.25:8000/api/v1/lighting/{light_id}/on"
 
 # main.py の AUTH_HEADER_NAMES に合わせる
 AUTH_HEADER_NAMES = {
@@ -164,9 +165,12 @@ show("AuthZ get", r)
 # 6. invoke_resource (signed by userB)
 # =====================================================
 headers = build_auth_headers(sk_b, RESOURCE_ID, USER_B)
-r = requests.get(
+
+r = requests.post(
     f"{CONNECTOR_URL}/invoke_resource",
     headers=headers,
+    params={"light_id": "a302-1"},
+    auth=("admin", "admin"), # Basic認証用のユーザ名/パスワードは変える
     stream=True,
 )
 

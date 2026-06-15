@@ -1,3 +1,4 @@
+import re
 from fastapi import FastAPI, Request, Response, HTTPException
 from fastapi.responses import StreamingResponse
 import httpx
@@ -87,6 +88,14 @@ def verify_signature(public_key_pem: str, data: dict, signature_b64: str) -> boo
     except Exception:
         return False
 
+def fill_resource_path(resource_path: str, request: Request) -> str:
+    for key in re.findall(r"{([^{}]+)}", resource_path):
+        value = request.query_params.get(key)
+        if value is None:
+            raise HTTPException(400, f"missing query parameter: {key}")
+        resource_path = resource_path.replace(f"{{{key}}}", value)
+    return resource_path
+    
 # リレー用関数
 async def relay(req: Request, url: str):
     if req.url.query:
@@ -147,7 +156,7 @@ async def pkr_del(request: Request):
 
 @app.get("/pkr/get/{user_id}")
 async def pkr_get(user_id: str, request: Request):
-    return await relay(request, f"{PKR}/pkr/get{user_id}")
+    return await relay(request, f"{PKR}/pkr/get/{user_id}")
 
 @app.get("/pkr/debug/showAllKeys")
 async def pkr_debug_show_all(request: Request):
@@ -215,6 +224,5 @@ async def relay_resource(request: Request):
 
     # resource_pathの取得
     endpoint, resource_path = get_location_from_fc(auth_headers["resource_id"])
+    resource_path = fill_resource_path(resource_path, request)
     return await relay(request, resource_path)
-
-
