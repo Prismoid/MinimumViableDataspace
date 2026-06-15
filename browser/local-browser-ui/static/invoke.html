@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <title>Minimum Viable Dataspace Console - Invoke</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/common.js"></script>
+</head>
+<body>
+<script>nav('invoke')</script>
+<main>
+  <div class="two-col operation-result">
+    <div class="card">
+      <h2>Invoke Resource</h2>
+      <p class="muted">選択したユーザの秘密鍵で署名し、Connector の /invoke_resource を呼び出します。</p>
+      <label>User</label><select id="user-id"></select>
+      <label>Resource ID</label><input id="resource-id" placeholder="resource-001">
+      <label>Method</label><select id="method"><option>GET</option><option>POST</option><option>PUT</option><option>PATCH</option><option>DELETE</option></select>
+      <label>Query Parameters</label><input id="query-params" placeholder="room_id=roomA&light_id=a302-1">
+      <p class="muted">リソース呼び出し時に付与するクエリパラメータを指定します。"room_id=roomA" または "?room_id=roomA" のどちらの形式でも入力できます。複数指定する場合は "room_id=roomA&light_id=a302-1" のように "&" で連結してください。入力値は /invoke_resource のクエリ文字列として Provider 側 Connector に中継されます。</p>
+      <label>Body</label><textarea id="body" placeholder='{"key":"value"}'></textarea>
+      <button onclick="invokeResource()">Invoke</button>
+    </div>
+    <div class="card result-card">
+      <h2>Result</h2>
+      <div id="result" class="result">No result.</div>
+    </div>
+  </div>
+</main>
+<script src="/static/invoke.js"></script>
+</body>
+</html>
