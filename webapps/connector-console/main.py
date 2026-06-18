@@ -71,6 +71,11 @@ class InvokeReq(BaseModel):
     method: str = "GET"
     query_params: Optional[str] = None
     body: Optional[str] = None
+    auth_type: str = "none"
+    basic_user: Optional[str] = None
+    basic_pass: Optional[str] = None
+    bearer_token: Optional[str] = None
+    custom_auth: Optional[str] = None
 
 
 app = FastAPI(title="MVD Console")
@@ -120,6 +125,37 @@ def get_local_key_or_400(db, user_id: str) -> LocalKey:
     return key
 
 
+def build_authorization_header(req: InvokeReq) -> Optional[str]:
+    auth_type = (req.auth_type or "none").strip().lower()
+
+    if auth_type == "none":
+        return None
+
+    if auth_type == "basic":
+        username = (req.basic_user or "").strip()
+        password = req.basic_pass or ""
+        if not username:
+            raise HTTPException(400, "basic username is required")
+        token = base64.b64encode(f"{username}:{password}".encode()).decode()
+        return f"Basic {token}"
+
+    if auth_type == "bearer":
+        token = (req.bearer_token or "").strip()
+        if not token:
+            raise HTTPException(400, "bearer token is required")
+        if token.lower().startswith("bearer "):
+            return token
+        return f"Bearer {token}"
+
+    if auth_type == "custom":
+        value = (req.custom_auth or "").strip()
+        if not value:
+            raise HTTPException(400, "custom Authorization header value is required")
+        return value
+
+    raise HTTPException(400, "auth_type must be one of: none, basic, bearer, custom")
+
+
 async def connector_json(method: str, path: str, *, json_body: Any = None):
     async with httpx.AsyncClient(timeout=30.0) as client:
         res = await client.request(method, f"{CONNECTOR_URL}{path}", json=json_body)
@@ -144,6 +180,31 @@ async def get_fc_entries():
 
 async def get_authz_entries():
     return await connector_json("GET", "/authz/debug/show_all")
+
+
+async def get_pkr_entries():
+    return await connector_json("GET", "/pkr/debug/showAllKeys")
+
+
+@app.get("/api/console/pkr/local-registered")
+async def list_local_registered_pkr_entries():
+    """Return only PKR entries that match this console's Local Keys."""
+    db = SessionLocal()
+    try:
+        local_keys = {k.user_id: k.public_key.strip() for k in db.query(LocalKey).all()}
+    finally:
+        db.close()
+
+    if not local_keys:
+        return []
+
+    pkr_items = await get_pkr_entries()
+    return [
+        item
+        for item in pkr_items
+        if item.get("user_id") in local_keys
+        and (item.get("public_key") or "").strip() == local_keys[item.get("user_id")]
+    ]
 
 
 async def get_fc_entry(resource_id: str):
@@ -191,6 +252,17 @@ def create_local_key(req: UserReq):
         db.add(key)
         db.commit()
         return key_to_dict(key)
+    finally:
+        db.close()
+
+
+@app.post("/api/local-keys/debug/delete-all")
+def debug_delete_all_local_keys():
+    db = SessionLocal()
+    try:
+        deleted_count = db.query(LocalKey).delete()
+        db.commit()
+        return {"status": "deleted", "target": "local_keys", "deleted_count": deleted_count}
     finally:
         db.close()
 
@@ -378,6 +450,20 @@ async def console_authz_delete(req: AuthzDeleteReq):
         db.close()
 
 
+@app.post("/api/console/authz/debug/delete-all")
+async def console_authz_debug_delete_all():
+    # Most current MVD AuthZ implementations expose this as POST.
+    # Fall back to DELETE/GET so older PoC variants with debug endpoints still work.
+    last_res = None
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        for method in ("POST", "DELETE", "GET"):
+            res = await client.request(method, f"{CONNECTOR_URL}/authz/debug/delete_all")
+            last_res = res
+            if res.status_code not in (404, 405):
+                return Response(content=res.content, status_code=res.status_code, media_type=res.headers.get("content-type"))
+    return Response(content=last_res.content if last_res else b"", status_code=last_res.status_code if last_res else 500)
+
+
 @app.post("/api/console/invoke")
 async def console_invoke(req: InvokeReq):
     db = SessionLocal()
@@ -391,6 +477,10 @@ async def console_invoke(req: InvokeReq):
             "X-Expire-Time": signed["expire_time"],
             "X-Signature": signed["signature"],
         }
+        authorization = build_authorization_header(req)
+        if authorization:
+            headers["Authorization"] = authorization
+
         path = "/invoke_resource"
         if req.query_params and req.query_params.strip():
             path += "?" + req.query_params.strip().lstrip("?")

@@ -43,7 +43,9 @@
     <div class="card">
       <div class="section-title">
         <h2>Local Keys</h2>
+        <button class="danger small" onclick="deleteAllLocalKeys()">Debug: Delete All Local Keys</button>
       </div>
+      <p class="muted table-card-help">この Console の DB に保存されている Local Keys だけを表示します。PoC用のため、秘密鍵も確認できるようにしています。</p>
       <div class="table-tools">
         <input id="local-key-search" placeholder="Search Local Keys">
       </div>
@@ -58,8 +60,9 @@
       <div class="section-title">
         <h2>Public Key Registry DB</h2>
       </div>
+      <p class="muted table-card-help">この Console の Local Keys と User ID / Public Key が一致する公開鍵だけを表示します。</p>
       <div class="table-tools">
-        <input id="pkr-search" placeholder="Search Public Key Registry">
+        <input id="pkr-search" placeholder="Search Local PKR Entries">
       </div>
       <table>
         <thead><tr><th>User ID</th><th>Public Key</th><th>Registered At</th></tr></thead>

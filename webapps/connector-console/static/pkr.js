@@ -21,7 +21,8 @@ async function loadLocalKeysForTable() {
 }
 
 async function loadPkrDb() {
-  const rows = await api('/api/pkr/debug/showAllKeys');
+  // Public Key Registry 全体ではなく、この Console の Local Keys と user_id / public_key が一致する行のみ表示する。
+  const rows = await api('/api/console/pkr/local-registered');
   createPager({
     rows,
     tbodyId: 'pkr-body',
@@ -43,6 +44,7 @@ async function createLocalKey() {
     }));
     await loadLocalKeysForTable();
     await loadLocalKeys('pkr-user');
+    await loadPkrDb();
   } catch (e) { showResult(e); }
 }
 
@@ -74,6 +76,16 @@ async function deletePkr() {
       method: 'POST',
       body: JSON.stringify({ user_id: val('pkr-user') }),
     }));
+    await loadLocalKeysForTable();
+    await loadLocalKeys('pkr-user');
+    await loadPkrDb();
+  } catch (e) { showResult(e); }
+}
+
+async function deleteAllLocalKeys() {
+  if (!confirm('Debug: Local Keys を全て削除します。PKR DB 側の公開鍵は削除されません。実行しますか？')) return;
+  try {
+    showResult(await api('/api/local-keys/debug/delete-all', { method: 'POST' }));
     await loadLocalKeysForTable();
     await loadLocalKeys('pkr-user');
     await loadPkrDb();

@@ -18,6 +18,29 @@
       <label>Method</label><select id="method"><option>GET</option><option>POST</option><option>PUT</option><option>PATCH</option><option>DELETE</option></select>
       <label>Query Parameters</label><input id="query-params" placeholder="room_id=roomA&light_id=a302-1">
       <p class="muted">リソース呼び出し時に付与するクエリパラメータを指定します。"room_id=roomA" または "?room_id=roomA" のどちらの形式でも入力できます。複数指定する場合は "room_id=roomA&light_id=a302-1" のように "&" で連結してください。入力値は /invoke_resource のクエリ文字列として Provider 側 Connector に中継されます。</p>
+
+      <label>Authorization</label>
+      <select id="authType">
+        <option value="none">なし</option>
+        <option value="basic">Basic</option>
+        <option value="bearer">Bearer</option>
+        <option value="custom">直接入力</option>
+      </select>
+      <p class="muted">Provider 側リソースが HTTP Authorization ヘッダーを要求する場合だけ指定します。未指定の場合は従来通り Authorization ヘッダーを付与しません。</p>
+
+      <div id="basicAuthFields" class="auth-fields" hidden>
+        <label>Basic Username</label><input id="basicUser" placeholder="Username">
+        <label>Basic Password</label><input id="basicPass" type="password" placeholder="Password">
+      </div>
+
+      <div id="bearerAuthFields" class="auth-fields" hidden>
+        <label>Bearer Token</label><input id="bearerToken" placeholder="Bearer token">
+      </div>
+
+      <div id="customAuthFields" class="auth-fields" hidden>
+        <label>Authorization Header Value</label><input id="customAuth" placeholder="Authorization header value">
+      </div>
+
       <label>Body</label><textarea id="body" placeholder='{"key":"value"}'></textarea>
       <button onclick="invokeResource()">Invoke</button>
     </div>

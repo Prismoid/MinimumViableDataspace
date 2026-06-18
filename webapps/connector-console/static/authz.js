@@ -58,4 +58,12 @@ async function deleteAuthz() {
   } catch (e) { showResult(e); }
 }
 
+async function deleteAllAuthz() {
+  if (!confirm('Debug: Authorization DB の全エントリを削除します。実行しますか？')) return;
+  try {
+    showResult(await api('/api/console/authz/debug/delete-all', { method: 'POST' }));
+    await loadAuthz();
+  } catch (e) { showResult(e); }
+}
+
 loadAuthz();
