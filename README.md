@@ -1,6 +1,6 @@
 # MinimumViableDataspace
 
-<img src="images/MVD.png" alt="MVD" width="696" height="370">
+<img src="docs/images/MVD.png" alt="MVD" width="696" height="370">
 
 ## 動作確認方法
 - Public Key Registry の起動 (ポート番号: 7450)
