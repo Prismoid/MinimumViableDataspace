@@ -27,3 +27,16 @@ Connector API がホスト側で起動している前提です。
 ## 注意
 
 PoC用です。秘密鍵は `mvd-console-db` の PostgreSQL に平文保存しています。本番用途では暗号化やKMS利用が必要です。
+
+
+## Invoke Resource の任意ヘッダー
+
+Invoke Resource では、HTTP Headers 欄に以下のように1行1件で任意ヘッダーを追加できます。
+
+```text
+X-Api-Key: demo-api-key
+Accept: application/json
+Content-Type: application/json
+```
+
+署名用の `X-Resource-Id` / `X-User-Id` / `X-Expire-Time` / `X-Signature` と `Authorization` は専用処理で扱うため、HTTP Headers 欄では指定しません。

@@ -19,6 +19,10 @@
       <label>Query Parameters</label><input id="query-params" placeholder="room_id=roomA&light_id=a302-1">
       <p class="muted">リソース呼び出し時に付与するクエリパラメータを指定します。"room_id=roomA" または "?room_id=roomA" のどちらの形式でも入力できます。複数指定する場合は "room_id=roomA&light_id=a302-1" のように "&" で連結してください。入力値は /invoke_resource のクエリ文字列として Provider 側 Connector に中継されます。</p>
 
+      <label>HTTP Headers</label>
+      <textarea id="extraHeaders" class="headers-textarea" placeholder="X-Api-Key: demo-api-key&#10;Accept: application/json&#10;Content-Type: application/json"></textarea>
+      <p class="muted">任意のHTTPヘッダーを1行1件で指定できます。形式は "Header-Name: value" です。署名用の X-Resource-Id / X-User-Id / X-Expire-Time / X-Signature と Authorization は専用欄で扱うため、ここでは指定しません。</p>
+
       <label>Authorization</label>
       <select id="authType">
         <option value="none">なし</option>

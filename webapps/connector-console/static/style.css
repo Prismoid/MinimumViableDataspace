@@ -753,3 +753,7 @@ select:focus-visible {
   min-height: 0;
   max-height: none;
 }
+
+.headers-textarea {
+  min-height: 96px;
+}

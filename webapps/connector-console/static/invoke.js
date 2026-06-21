@@ -33,6 +33,7 @@ async function invokeResource() {
         method: val('method'),
         query_params: val('query-params'),
         body: document.getElementById('body').value,
+        extra_headers: document.getElementById('extraHeaders').value,
         auth_type: val('authType'),
         basic_user: val('basicUser'),
         basic_pass: document.getElementById('basicPass').value,

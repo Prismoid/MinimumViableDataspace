@@ -71,6 +71,7 @@ class InvokeReq(BaseModel):
     method: str = "GET"
     query_params: Optional[str] = None
     body: Optional[str] = None
+    extra_headers: Optional[str] = None
     auth_type: str = "none"
     basic_user: Optional[str] = None
     basic_pass: Optional[str] = None
@@ -123,6 +124,72 @@ def get_local_key_or_400(db, user_id: str) -> LocalKey:
     if not key:
         raise HTTPException(400, f"local private key not found: {user_id}")
     return key
+
+
+RESERVED_INVOKE_HEADERS = {
+    "host",
+    "content-length",
+    "x-resource-id",
+    "x-user-id",
+    "x-expire-time",
+    "x-signature",
+    "authorization",
+}
+
+
+def parse_extra_headers(raw_headers: Optional[str]) -> dict[str, str]:
+    """Parse optional HTTP headers for Invoke Resource.
+
+    Supported formats:
+    - One header per line: `Header-Name: value`
+    - JSON object: `{"Header-Name": "value"}`
+
+    Protocol/signature headers are reserved so the console cannot accidentally
+    break the Connector signature verification path. Authorization is handled
+    by the dedicated Authorization UI fields.
+    """
+    raw = (raw_headers or "").strip()
+    if not raw:
+        return {}
+
+    if raw.startswith("{"):
+        try:
+            parsed = json.loads(raw)
+        except json.JSONDecodeError as e:
+            raise HTTPException(400, f"extra_headers JSON is invalid: {e.msg}")
+        if not isinstance(parsed, dict):
+            raise HTTPException(400, "extra_headers JSON must be an object")
+        items = parsed.items()
+    else:
+        items = []
+        for line_no, line in enumerate(raw.splitlines(), start=1):
+            line = line.strip()
+            if not line:
+                continue
+            if ":" not in line:
+                raise HTTPException(400, f"extra_headers line {line_no} must be 'Header-Name: value'")
+            name, value = line.split(":", 1)
+            items.append((name, value))
+
+    headers: dict[str, str] = {}
+    for name, value in items:
+        header_name = str(name).strip()
+        header_value = "" if value is None else str(value).strip()
+        lower_name = header_name.lower()
+
+        if not header_name:
+            raise HTTPException(400, "header name must not be empty")
+        if any(ch in header_name for ch in "\r\n:") or any(ch in header_value for ch in "\r\n"):
+            raise HTTPException(400, "header name/value must not contain CR or LF")
+        if lower_name in RESERVED_INVOKE_HEADERS:
+            raise HTTPException(
+                400,
+                f"header '{header_name}' is reserved. Use the dedicated fields instead.",
+            )
+
+        headers[header_name] = header_value
+
+    return headers
 
 
 def build_authorization_header(req: InvokeReq) -> Optional[str]:
@@ -477,6 +544,8 @@ async def console_invoke(req: InvokeReq):
             "X-Expire-Time": signed["expire_time"],
             "X-Signature": signed["signature"],
         }
+        headers.update(parse_extra_headers(req.extra_headers))
+
         authorization = build_authorization_header(req)
         if authorization:
             headers["Authorization"] = authorization
