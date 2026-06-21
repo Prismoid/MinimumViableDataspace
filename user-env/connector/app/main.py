@@ -1,3 +1,4 @@
+import re
 from fastapi import FastAPI, Request, Response, HTTPException
 from fastapi.responses import StreamingResponse
 import httpx
@@ -10,19 +11,14 @@ from ecdsa import VerifyingKey
 app = FastAPI()
 
 # =====================================================
-# Request models
+# HTTP Request Header Names
 # =====================================================
-class GetDataReq(BaseModel):
-    data_id: str
-    user_id: str
-    expire_time: str
-    signature: str
-
-class RetDataReq(BaseModel):
-    data_id: str
-    user_id: str
-    expire_time: str
-    signature: str # data_id + user_id + expire_time
+AUTH_HEADER_NAMES = {
+    "resource_id": "X-Resource-Id",
+    "user_id": "X-User-Id",
+    "expire_time": "X-Expire-Time",
+    "signature": "X-Signature",
+}
 
 # =====================================================
 # Helpers
@@ -31,6 +27,15 @@ FC    = "http://host.docker.internal:7451"
 PKR   = "http://host.docker.internal:7450"
 AUTHZ = "http://host.docker.internal:7551"
 FILE_SERVER = "http://host.docker.internal:7552"
+
+def get_required_auth_headers(request: Request) -> dict:
+    values = {}
+    for key, header_name in AUTH_HEADER_NAMES.items():
+        values[key] = request.headers.get(header_name)
+        if values[key] is None: 
+            raise HTTPException(status_code=400, detail=f"missing required header: {header_name}")
+    return values
+    
 
 def validate_expire(iso_time: str):
     t = datetime.fromisoformat(iso_time.replace("Z", "+00:00"))
@@ -43,28 +48,28 @@ def get_public_key(user_id: str) -> str:
         raise HTTPException(400, "public key not found")
     return r.json()["public_key"]
 
-def get_owner_user_id_from_fc(data_id: str) -> str:
-    r = requests.get(f"{FC}/fc/get", params={"data_id": data_id})
+def get_owner_user_id_from_fc(resource_id: str) -> str:
+    r = requests.get(f"{FC}/fc/get", params={"resource_id": resource_id})
     if r.status_code != 200:
         raise HTTPException(400, "fc access failed")
     entries = r.json()
     if not entries:
-        raise HTTPException(404, "data_id not found")
+        raise HTTPException(404, "resource_id not found")
     return entries[0]["user_id"]
 
-def get_location_from_fc(data_id: str) -> str:
-    r = requests.get(f"{FC}/fc/get", params={"data_id": data_id})
+def get_location_from_fc(resource_id: str) -> str:
+    r = requests.get(f"{FC}/fc/get", params={"resource_id": resource_id})
     if r.status_code != 200:
         raise HTTPException(400, "fc access failed")
     entries = r.json()
     if not entries:
-        raise HTTPException(404, "data_id not found")
-    return entries[0]["endpoint"], entries[0]["local_path"]
+        raise HTTPException(404, "resource_id not found")
+    return entries[0]["endpoint"], entries[0]["resource_path"]
 
-def check_authz(data_id: str, user_id: str):
+def check_authz(resource_id: str, user_id: str):
     r = requests.get(
         f"{AUTHZ}/authz/get",
-        params={"data_id": data_id, "access_grantee_id": user_id},
+        params={"resource_id": resource_id, "access_grantee_id": user_id},
     )
     if r.status_code != 200:
         raise HTTPException(403, "authz denied")
@@ -83,9 +88,16 @@ def verify_signature(public_key_pem: str, data: dict, signature_b64: str) -> boo
     except Exception:
         return False
 
+def fill_resource_path(resource_path: str, request: Request) -> str:
+    for key in re.findall(r"{([^{}]+)}", resource_path):
+        value = request.query_params.get(key)
+        if value is None:
+            raise HTTPException(400, f"missing query parameter: {key}")
+        resource_path = resource_path.replace(f"{{{key}}}", value)
+    return resource_path
+    
 # リレー用関数
-async def relay(req: Request, base: str, path: str):
-    url = f"{base}{path}"
+async def relay(req: Request, url: str):
     if req.url.query:
         url += f"?{req.url.query}"
 
@@ -106,133 +118,111 @@ async def relay(req: Request, base: str, path: str):
 # FC
 @app.post("/fc/add")
 async def fc_add(request: Request):
-    return await relay(request, FC, "/fc/add")
+    return await relay(request, f"{FC}/fc/add")
 
 @app.post("/fc/upd")
 async def fc_upd(request: Request):
-    return await relay(request, FC, "/fc/upd")
+    return await relay(request, f"{FC}/fc/upd")
 
 @app.post("/fc/del")
 async def fc_del(request: Request):
-    return await relay(request, FC, "/fc/del")
+    return await relay(request, f"{FC}/fc/del")
 
 @app.get("/fc/get")
 async def fc_get(request: Request):
-    return await relay(request, FC, "/fc/get")
+    return await relay(request, f"{FC}/fc/get")
 
 @app.get("/fc/debug/showAll")
 async def fc_debug_show_all(request: Request):
-    return await relay(request, FC, "/fc/debug/showAll")
+    return await relay(request, f"{FC}/fc/debug/showAll")
 
 @app.delete("/fc/debug/delAll")
 async def fc_debug_delete_all(request: Request):
-    return await relay(request, FC, "/fc/debug/delAll")
+    return await relay(request, f"{FC}/fc/debug/delAll")
 
 
 # PKR
 @app.post("/pkr/add")
 async def pkr_add(request: Request):
-    return await relay(request, PKR, "/pkr/add")
+    return await relay(request, f"{PKR}/pkr/add")
 
 @app.post("/pkr/upd")
 async def pkr_upd(request: Request):
-    return await relay(request, PKR, "/pkr/upd")
+    return await relay(request, f"{PKR}/pkr/upd")
 
 @app.post("/pkr/del")
 async def pkr_del(request: Request):
-    return await relay(request, PKR, "/pkr/del")
+    return await relay(request, f"{PKR}/pkr/del")
 
 @app.get("/pkr/get/{user_id}")
 async def pkr_get(user_id: str, request: Request):
-    return await relay(request, PKR, f"/pkr/get/{user_id}")
+    return await relay(request, f"{PKR}/pkr/get/{user_id}")
 
 @app.get("/pkr/debug/showAllKeys")
 async def pkr_debug_show_all(request: Request):
-    return await relay(request, PKR, "/pkr/debug/showAllKeys")
+    return await relay(request, f"{PKR}/pkr/debug/showAllKeys")
 
 @app.delete("/pkr/debug/delAllKeys")
 async def pkr_debug_delete_all(request: Request):
-    return await relay(request, PKR, "/pkr/debug/delAllKeys")
+    return await relay(request, f"{PKR}/pkr/debug/delAllKeys")
 
 
 # AuthZ
 @app.post("/authz/add")
 async def authz_add(request: Request):
-    return await relay(request, AUTHZ, "/authz/add")
+    return await relay(request, f"{AUTHZ}/authz/add")
 
 @app.post("/authz/upd")
 async def authz_upd(request: Request):
-    return await relay(request, AUTHZ, "/authz/upd")
+    return await relay(request, f"{AUTHZ}/authz/upd")
 
 @app.post("/authz/del")
 async def authz_del(request: Request):
-    return await relay(request, AUTHZ, "/authz/del")
+    return await relay(request, f"{AUTHZ}/authz/del")
 
 @app.get("/authz/get")
 async def authz_get(request: Request):
-    return await relay(request, AUTHZ, "/authz/get")
+    return await relay(request, f"{AUTHZ}/authz/get")
 
 @app.get("/authz/debug/show_all")
 async def authz_debug_show_all(request: Request):
-    return await relay(request, AUTHZ, "/authz/debug/show_all")
+    return await relay(request, f"{AUTHZ}/authz/debug/show_all")
 
 @app.delete("/authz/debug/delete_all")
 async def authz_debug_delete_all(request: Request):
-    return await relay(request, AUTHZ, "/authz/debug/delete_all")
+    return await relay(request, f"{AUTHZ}/authz/debug/delete_all")
 
 # =====================================================
 # Connector Original API
+# -----------------------
+# The auth headers contain resource_id, user_id, expire_time, and signature.
+# - resource_id : Target resource ID to be invoked
+# - user_id     : ID of the requester
+# - expire_time : Expiration time of the signed request
+# - signature   : Signature for resource_id, user_id, and expire_time
 # =====================================================
-@app.post("/get_data")
-def get_data(req: GetDataReq):
-    endpoint, local_path = get_location_from_fc(req.data_id)
+@app.api_route("/invoke_resource", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"])
+async def invoke_resource(request: Request): 
+    auth_headers = get_required_auth_headers(request)
+    endpoint, resource_path = get_location_from_fc(auth_headers["resource_id"])
+    
+    return await relay(request, f"{endpoint}/relay_resource")
 
-    ret_req = {
-        "data_id": req.data_id,
-        "user_id": req.user_id,
-        "expire_time": req.expire_time,
-        "signature": req.signature,
-    }
-
-    r = requests.post(f"{endpoint}/ret_data", json=ret_req, stream=True)
-    if r.status_code != 200:
-        raise HTTPException(400, "ret_data failed")
-
-    filename = local_path.rsplit("/", 1)[-1]
-    with open(f"/rcv_storage/{filename}", "wb") as f:
-        for chunk in r.iter_content(8192):
-            if chunk:
-                f.write(chunk)
-
-    return {"status": "ok", "saved": filename}
-
-@app.post("/ret_data")
-def ret_data(req: RetDataReq):
-    pubkey = get_public_key(req.user_id)
+@app.api_route("/relay_resource", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"])
+async def relay_resource(request: Request):
+    auth_headers = get_required_auth_headers(request)
+    pubkey = get_public_key(auth_headers["user_id"])
     signed_data = {
-        "data_id": req.data_id,
-        "user_id": req.user_id,
-        "expire_time": req.expire_time,
+        "resource_id": auth_headers["resource_id"],
+        "user_id": auth_headers["user_id"],
+        "expire_time": auth_headers["expire_time"],
     }
-    if not verify_signature(pubkey, signed_data, req.signature):
+    if not verify_signature(pubkey, signed_data, auth_headers["signature"]):
         raise HTTPException(400, "invalid signature")
 
-    check_authz(req.data_id, req.user_id)
+    check_authz(auth_headers["resource_id"], auth_headers["user_id"])
 
-    # local_pathの取得
-    endpoint, local_path = get_location_from_fc(req.data_id)
-    r = requests.get(local_path, stream=True)
-    if r.status_code != 200:
-        raise HTTPException(404, "file fetch failed")
-
-    filename = local_path.rsplit("/", 1)[-1]
-
-    return StreamingResponse(
-        r.iter_content(8192),
-        media_type="application/octet-stream",
-        headers={
-            "Content-Disposition": f'attachment; filename="{filename}"'
-        },
-    )
-
-
+    # resource_pathの取得
+    endpoint, resource_path = get_location_from_fc(auth_headers["resource_id"])
+    resource_path = fill_resource_path(resource_path, request)
+    return await relay(request, resource_path)

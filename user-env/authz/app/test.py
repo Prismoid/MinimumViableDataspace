@@ -14,7 +14,7 @@ AUTHZ_URL = "http://localhost:7551"
 
 USER_A = "userA"
 USER_B = "userB"
-DATA_ID = "data-001"
+RESOURCE_ID = "resource-001"
 
 # =====================================================
 # utils
@@ -62,24 +62,24 @@ payload["signature"] = sign(sk_a, payload)
 show("PKR add userA", requests.post(f"{PKR_URL}/pkr/add", json=payload))
 
 # =====================================================
-# 2. FC: add data-001 (owner=userA)
+# 2. FC: add resource-001 (owner=userA)
 # =====================================================
 payload = {
-    "data_id": DATA_ID,
+    "resource_id": RESOURCE_ID,
     "user_id": USER_A,
-    "description": "minimal PoC data",
+    "description": "minimal PoC resource",
     "endpoint": "https://example.com",
-    "local_path": "/data/sample",
+    "resource_path": "/resource/sample",
     "expire_time": iso_now_plus(),
 }
 payload["signature"] = sign(sk_a, payload)
-show("FC add data-001", requests.post(f"{FC_URL}/fc/add", json=payload))
+show("FC add resource-001", requests.post(f"{FC_URL}/fc/add", json=payload))
 
 # =====================================================
 # 3. AuthZ: grant userB (signed by userA)
 # =====================================================
 payload = {
-    "data_id": DATA_ID,
+    "resource_id": RESOURCE_ID,
     "access_grantee_id": USER_B,
     "expired_at": iso_now_plus(hours=1),
     "expire_time": iso_now_plus(),
@@ -92,6 +92,6 @@ show("AuthZ add (grant userB)", requests.post(f"{AUTHZ_URL}/authz/add", json=pay
 # =====================================================
 r = requests.get(
     f"{AUTHZ_URL}/authz/get",
-    params={"data_id": DATA_ID, "access_grantee_id": USER_B},
+    params={"resource_id": RESOURCE_ID, "access_grantee_id": USER_B},
 )
 show("AuthZ get", r)
