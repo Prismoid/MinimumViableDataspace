@@ -26,9 +26,12 @@ cd user-env/authz && docker compose up -d
 cd user-env/file-server && docker compose up -d
 ```
 
-- データ共有の一連の手続きは、コネクタの app ディレクトリにある test.py, test2.py スクリプトを実行することで確かめられる。
+- FC / PKR Viewer の起動 (ポート番号: 7650)
 ```bash
-cd user-env/connector/app
-python3 test.py # HTPP File Serverで提供されているデータを取得する
-python3 test2.py # DUCRBのAPIを呼ぶ
+cd webapps/fc-pkr-viewer && docker compose up -d
+```
+
+- Connector Console の起動 (ポート番号: 7651)
+```bash
+cd webapps/connector-console && docker compose up -d
 ```
