@@ -101,7 +101,7 @@ async def relay(req: Request, url: str):
     if req.url.query:
         url += f"?{req.url.query}"
 
-    async with httpx.AsyncClient() as c:
+    async with httpx.AsyncClient(timeout=30.0) as c:
         r = await c.request(
             req.method,
             url,
