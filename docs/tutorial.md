@@ -31,7 +31,7 @@ http://localhost:7651
 - Authorization type を選択し、必要に応じて認証情報を入力します。
 - POST リクエストの場合は、必要に応じて body も入力できます。
 
-## Federated Catalog
+## Federated Catalog & Public Key Registry
 
 http://localhost:7650/
 

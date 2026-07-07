@@ -32,7 +32,7 @@ On the "Invoke Resource" screen, you can get the offered resources.
 - for POST requests, you may also enter a body
 
   
-## Federated Catalog
+## Federated Catalog & Public Key Registry
 
 http://localhost:7650/
 
