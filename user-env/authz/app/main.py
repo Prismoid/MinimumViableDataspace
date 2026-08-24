@@ -22,6 +22,7 @@ class AuthzTable(Base):
 
     resource_id = Column(String, primary_key=True)
     access_grantee_id = Column(String, primary_key=True)
+    valid_from = Column(DateTime, nullable=False)
     expired_at = Column(DateTime, nullable=False)
     created_at = Column(DateTime, nullable=False)
 

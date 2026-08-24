@@ -32,10 +32,10 @@ def get_required_auth_headers(request: Request) -> dict:
     values = {}
     for key, header_name in AUTH_HEADER_NAMES.items():
         values[key] = request.headers.get(header_name)
-        if values[key] is None: 
+        if values[key] is None:
             raise HTTPException(status_code=400, detail=f"missing required header: {header_name}")
     return values
-    
+
 
 def validate_expire(iso_time: str):
     t = datetime.fromisoformat(iso_time.replace("Z", "+00:00"))
@@ -73,9 +73,9 @@ def check_authz(resource_id: str, user_id: str):
     )
     if r.status_code != 200:
         raise HTTPException(403, "authz denied")
-    
+
     expired_at = datetime.fromisoformat(r.json()["expired_at"])
-    expired_at = expired_at.replace(tzinfo=timezone.utc) 
+    expired_at = expired_at.replace(tzinfo=timezone.utc)
     if expired_at <= datetime.now(timezone.utc):
         raise HTTPException(403, "permission expired")
 
@@ -95,7 +95,7 @@ def fill_resource_path(resource_path: str, request: Request) -> str:
             raise HTTPException(400, f"missing query parameter: {key}")
         resource_path = resource_path.replace(f"{{{key}}}", value)
     return resource_path
-    
+
 # リレー用関数
 async def relay(req: Request, url: str):
     if req.url.query:
@@ -110,7 +110,7 @@ async def relay(req: Request, url: str):
             content=await req.body(),
         )
 
-    return Response(r.content, r.status_code, media_type=r.headers.get("content-type"))
+    return Response(r.content, r.status_code, headers=dict(r.headers))
 
 # =====================================================
 # API
@@ -202,10 +202,10 @@ async def authz_debug_delete_all(request: Request):
 # - signature   : Signature for resource_id, user_id, and expire_time
 # =====================================================
 @app.api_route("/invoke_resource", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"])
-async def invoke_resource(request: Request): 
+async def invoke_resource(request: Request):
     auth_headers = get_required_auth_headers(request)
     endpoint, resource_path = get_location_from_fc(auth_headers["resource_id"])
-    
+
     return await relay(request, f"{endpoint}/relay_resource")
 
 @app.api_route("/relay_resource", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"])
